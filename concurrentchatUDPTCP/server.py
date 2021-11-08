@@ -3,7 +3,6 @@ import socket, struct, select, sys, threading
 server_socket = None
 clients = {}  # key = client tcp socket | value = client udp socket (ip, port)
 
-
 def connection_thread():
     global server_socket, clients
 
@@ -14,9 +13,8 @@ def connection_thread():
         # iterate through all the sockets
         for sock in ready_list:
             if sock == server_socket:
-                print('A new client connected.')
                 # the server socket is triggered only if a connection has been made
-                client_socket, client_addr = sock.accept()
+                client_socket, _ = sock.accept()
                 # send the length of the clients dictionary
                 client_socket.sendall(struct.pack('!I', len(clients)))
                 # send all the clients to the newly connected client.
@@ -29,6 +27,8 @@ def connection_thread():
                     socket.inet_ntoa(client_socket.recv(4)),
                     struct.unpack('!I', client_socket.recv(4))[0]
                 )
+                
+                print('Client ' + str(new_client) + " has joined the chatroom.")
 
                 # Send the new client notification to all the other clients
                 for other_client_socket in clients:

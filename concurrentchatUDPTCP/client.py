@@ -14,25 +14,32 @@ def communication_thread():
 
         if client_TCP_socket in sockets:
             operation = client_TCP_socket.recv(1)  # This can be N - new client or L - a client has left.
-            if operation == b'L':
-                ipaddress = socket.inet_ntoa(client_TCP_socket.recv(4))
-                port = struct.unpack("!I", client_TCP_socket.recv(4))[0]
-                print("Client " + ipaddress + ":" + str(port) + " left the chatroom.")
-                other_clients.discard((ipaddress, port))
-            elif operation == b'N':
-                ipaddress = socket.inet_ntoa(client_TCP_socket.recv(4))
-                port = struct.unpack("!I", client_TCP_socket.recv(4))[0]
-                print("Client " + ipaddress + ":" + str(port) + " has joined the chatroom.")
-                other_clients.add((ipaddress, port))
-            elif operation == b'S':
-                print('The server has been shut down.')
+            
+            if operation != b'':
+                if operation == b'L':
+                    ipaddress = socket.inet_ntoa(client_TCP_socket.recv(4))
+                    port = struct.unpack("!I", client_TCP_socket.recv(4))[0]
+                    print("Client " + ipaddress + ":" + str(port) + " left the chatroom.")
+                    other_clients.discard((ipaddress, port))
+                elif operation == b'N':
+                    ipaddress = socket.inet_ntoa(client_TCP_socket.recv(4))
+                    port = struct.unpack("!I", client_TCP_socket.recv(4))[0]
+                    print("Client " + ipaddress + ":" + str(port) + " has joined the chatroom.")
+                    other_clients.add((ipaddress, port))
+                elif operation == b'S':
+                    print('The server has been shut down.')
+                    exit(-1)
+                    
+                else:
+                    print('Unknown command received from the server')
+                    
         if client_UDP_socket in sockets:
             message, address = client_UDP_socket.recvfrom(256)
             print("Client " + address[0] + ":" + str(address[1]) + " -> " + message.decode('utf-8'))
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print("Invalid arguments given...")
         exit(-1)
 
@@ -51,7 +58,7 @@ if __name__ == "__main__":
     client_UDP_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     # Since the client UDP socket does not have any port binded, we will send a random message
     # just to force the OS to assign a port
-    client_UDP_socket.sendto(b'message', ('192.254.254.254', 24544))
+    client_UDP_socket.bind(('127.0.0.1', int(sys.argv[3])))
 
     # Now we will get the port and the ip address pf the socket
     udp_ip, udp_port = client_UDP_socket.getsockname()
@@ -62,10 +69,11 @@ if __name__ == "__main__":
 
     print('Currently online clients: ')
     if len(other_clients) == 0:
-        print('none')
+        print('none\n')
     else:
         for client in other_clients:
             print('Client ' + str(client))
+        print('\n')
     # Start the thread that will handle incoming messages from the clients and the updates from the server.
     # daemon = True => the thread exits once the main thread stops
     threading.Thread(target=communication_thread, daemon=True).start()
